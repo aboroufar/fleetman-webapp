@@ -11,27 +11,54 @@ pipeline {
    }
 
    stages {
+          
       stage('Preparation') {
          steps {
+           
             cleanWs()
             git credentialsId: 'GitHub', url: "https://github.com/${ORGANIZATION_NAME}/${SERVICE_NAME}"
          }
       }
       stage('Build') {
          steps {
-            sh 'echo No build required for Webapp.'
+            sh '''mvn clean package'''
          }
       }
 
       stage('Build and Push Image') {
          steps {
+            
            sh 'docker image build -t ${REPOSITORY_TAG} .'
+         }
+      }
+      
+      stage('Docker Hub Push') {
+         steps {
+           
+            withCredentials([string(credentialsId: 'Docker-Hub', variable: 'dockerHubPwd')]) {
+            sh "docker login -u apesss -p '${dockerHubPwd}'"
+            sh "docker push ${REPOSITORY_TAG}"
+            }   
          }
       }
 
       stage('Deploy to Cluster') {
           steps {
-            sh 'envsubst < ${WORKSPACE}/deploy.yaml | kubectl apply -f -'
+             
+             sshagent (['k8s-machine']) {
+                 
+                 sh "sed -i 's|\${REPOSITORY_TAG}|${REPOSITORY_TAG}|g' deploy.yaml"
+                 sh "scp -o StrictHostKeyChecking=no deploy.yaml root@52.54.173.163:/root"
+                 script{
+                     try{
+                        sh "ssh root@52.54.173.163 kubectl apply -f ."
+                     }catch(error){
+                        sh "ssh root@52.54.173.163 kubectl apply -f ."
+                      }
+                
+                 }
+            
+             }
           }
       }
    }
