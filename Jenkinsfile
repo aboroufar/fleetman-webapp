@@ -11,34 +11,21 @@ pipeline {
    }
 
    stages {
-          
       stage('Preparation') {
          steps {
-           
             cleanWs()
             git credentialsId: 'GitHub', url: "https://github.com/${ORGANIZATION_NAME}/${SERVICE_NAME}"
          }
       }
       stage('Build') {
          steps {
-            sh '''mvn clean package'''
+            sh 'echo No build required for Webapp.'
          }
       }
 
       stage('Build and Push Image') {
          steps {
-            
            sh 'docker image build -t ${REPOSITORY_TAG} .'
-         }
-      }
-      
-      stage('Docker Hub Push') {
-         steps {
-           
-            withCredentials([string(credentialsId: 'Docker-Hub', variable: 'dockerHubPwd')]) {
-            sh "docker login -u apesss -p '${dockerHubPwd}'"
-            sh "docker push ${REPOSITORY_TAG}"
-            }   
          }
       }
 
